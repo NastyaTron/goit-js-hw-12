@@ -85,9 +85,6 @@ img {
   justify-content: space-evenly;
   padding-top: 4px;
 }
-.container {
-  display: flex;
-}
 .js-gallery {
   display: flex;
   gap: 24px;
