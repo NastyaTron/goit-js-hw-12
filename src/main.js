@@ -21,11 +21,12 @@ loadMoreBtnEl.classList.add('d-none');
 searchFormEl.addEventListener('submit', onSearchFormSubmit);
 async function onSearchFormSubmit(event) {
   event.preventDefault();
+  loadMoreBtnEl.classList.add('d-none');
   searchQuery = event.target.elements.searchKeyword.value.trim();
   if (searchQuery === '') {
     galleryEl.innerHTML = '';
     event.target.reset();
-    loadMoreBtnEl.classList.add('d-none');
+
     iziToast.error({
       timeout: 2000,
       position: 'topRight',
