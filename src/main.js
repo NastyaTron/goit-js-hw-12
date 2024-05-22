@@ -8,25 +8,29 @@ import { createGallaryItem } from './js/render-functions.js';
 import { fetchPhotosByQuery } from './js/pixabay-api.js';
 import { PER_PAGE } from './js/pixabay-api';
 
+const gallery = new SimpleLightbox('.gallery a', {
+  captionsData: 'alt',
+  captionDelay: 250,
+});
+
 const galleryEl = document.querySelector('.js-gallery');
 const searchFormEl = document.querySelector('.form-field');
 const loaderEl = document.querySelector('.loader');
 const loadMoreBtnEl = document.querySelector('.js-load-btn');
 
-let newsCurrentPage = 1;
 let searchQuery = '';
+let newsCurrentPage = 1;
 let totalPages = 0;
+
 loadMoreBtnEl.classList.add('d-none');
 
-searchFormEl.addEventListener('submit', onSearchFormSubmit);
 async function onSearchFormSubmit(event) {
   event.preventDefault();
+  newsCurrentPage = 1;
   loadMoreBtnEl.classList.add('d-none');
   searchQuery = event.target.elements.searchKeyword.value.trim();
   if (searchQuery === '') {
     galleryEl.innerHTML = '';
-    event.target.reset();
-
     iziToast.error({
       timeout: 2000,
       position: 'topRight',
@@ -37,6 +41,7 @@ async function onSearchFormSubmit(event) {
       close: false,
       closeOnClick: true,
     });
+    event.target.reset();
     return;
   }
 
@@ -49,7 +54,7 @@ async function onSearchFormSubmit(event) {
       newsCurrentPage
     );
     if (data.hits.length === 0) {
-      loadMoreBtnEl.classList.add('d-none');
+      loaderEl.classList.add('is-hidden');
       iziToast.error({
         timeout: 2000,
         position: 'topRight',
@@ -60,6 +65,8 @@ async function onSearchFormSubmit(event) {
         close: false,
         closeOnClick: true,
       });
+      event.target.reset();
+      return;
     }
 
     galleryEl.insertAdjacentHTML('beforeend', createGallaryItem(data.hits));
@@ -70,11 +77,19 @@ async function onSearchFormSubmit(event) {
       loadMoreBtnEl.classList.remove('d-none');
     }
 
-    new SimpleLightbox('.gallery a', {
-      captionsData: 'alt',
-      captionDelay: 250,
-    });
-    // lightbox.refresh();
+    gallery.refresh();
+    if (newsCurrentPage >= totalPages) {
+      loadMoreBtnEl.classList.add('d-none');
+      iziToast.error({
+        timeout: 5000,
+        position: 'topRight',
+        message: "We're sorry, but you've reached the end of search results.",
+        messageColor: '#fff',
+        backgroundColor: '#d37a7a',
+        close: false,
+        closeOnClick: true,
+      });
+    }
   } catch (error) {
     console.log(error);
   }
@@ -93,33 +108,38 @@ const smoothScrollOnLoadMore = () => {
   });
 };
 
-loadMoreBtnEl.addEventListener('click', onClickLoadMore);
-
 async function onClickLoadMore(event) {
-  newsCurrentPage += 1;
-  loadMoreBtnEl.classList.add('d-none');
-  loaderEl.classList.remove('is-hidden');
-  const { data } = await fetchPhotosByQuery(searchQuery, newsCurrentPage);
-  galleryEl.insertAdjacentHTML('beforeend', createGallaryItem(data.hits));
-
-  smoothScrollOnLoadMore();
-  totalPages = Math.ceil(data.totalHits / PER_PAGE);
-  if (totalPages > 1) {
-    loadMoreBtnEl.classList.remove('d-none');
-  }
-  loaderEl.classList.add('is-hidden');
-
-  if (newsCurrentPage > totalPages) {
+  try {
+    newsCurrentPage += 1;
     loadMoreBtnEl.classList.add('d-none');
-    loadMoreBtnEl.removeEventListener('click', onClickLoadMore);
-    iziToast.error({
-      timeout: 2000,
-      position: 'topRight',
-      message: "We're sorry, but you've reached the end of search results.",
-      messageColor: '#fff',
-      backgroundColor: '#d37a7a',
-      close: false,
-      closeOnClick: true,
-    });
+    loaderEl.classList.remove('is-hidden');
+    const { data, totalHits } = await fetchPhotosByQuery(
+      searchQuery,
+      newsCurrentPage
+    );
+    galleryEl.insertAdjacentHTML('beforeend', createGallaryItem(data.hits));
+    gallery.refresh();
+    smoothScrollOnLoadMore();
+    totalPages = Math.ceil(data.totalHits / PER_PAGE);
+    if (totalPages > 1) {
+      loadMoreBtnEl.classList.remove('d-none');
+    }
+    loaderEl.classList.add('is-hidden');
+    if (newsCurrentPage >= totalPages) {
+      loadMoreBtnEl.classList.add('d-none');
+      iziToast.error({
+        timeout: 5000,
+        position: 'topRight',
+        message: "We're sorry, but you've reached the end of search results.",
+        messageColor: '#fff',
+        backgroundColor: '#d37a7a',
+        close: false,
+        closeOnClick: true,
+      });
+    }
+  } catch (error) {
+    console.log(error);
   }
 }
+searchFormEl.addEventListener('submit', onSearchFormSubmit);
+loadMoreBtnEl.addEventListener('click', onClickLoadMore);
